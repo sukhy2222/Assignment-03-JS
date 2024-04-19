@@ -1,16 +1,32 @@
-let storeMyData;
 let currentPage = 1; // Track current page
 
 const movies = {
     apikey: "d4f1dcd6334e5eeba415a8313cbf9bde",
+    totalPages: 0,
     fetchMovies: function(name) {
-        fetch(`https://api.themoviedb.org/3/search/movie?api_key=${this.apikey}&query=${name}`)
-        .then(response => response.json())
-        .then(data => this.displayMyMovies(data));
+        if (!name) {
+            name = "Avengers";
+        }
+        fetch(`https://api.themoviedb.org/3/search/movie?api_key=${this.apikey}&query=${name}&page=${currentPage}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            this.totalPages = data.total_pages;
+            this.displayMyMovies(data, currentPage); // Pass currentPage here
+        })
+        .catch(error => {
+            console.error('Error fetching movies:', error);
+        });
     },
-    displayMyMovies: function(data) {
+    displayMyMovies: function(data, currentPage) { // Accept currentPage as an argument
         storeMyData = data;
+        console.log(storeMyData);
         const gridContainer = document.querySelector(".grid-container");
+        console.log("here");
         gridContainer.innerHTML = "";
         const startIndex = (currentPage - 1) * 20;
         const endIndex = currentPage * 20;
@@ -29,14 +45,37 @@ const movies = {
             `;
             gridContainer.innerHTML += movieItem;
         }
+        this.updatePaginationButtons();
     },
     nextPage: function() {
-        currentPage++;
-        this.displayMyMovies(storeMyData);
+        if (currentPage < this.totalPages) {
+            currentPage++;
+            this.fetchMovies(document.querySelector(".enter-text").value);
+        }
+    },
+    previousPage: function() {
+        if (currentPage > 1) {
+            currentPage--;
+            this.fetchMovies(document.querySelector(".enter-text").value);
+        }
     },
     searchFunction: function() {
         currentPage = 1;
         this.fetchMovies(document.querySelector(".enter-text").value);
+    },
+    updatePaginationButtons: function() {
+        const prevButton = document.querySelector(".previous-page-button");
+        const nextButton = document.querySelector(".next-page-button");
+        if (currentPage === 1) {
+            prevButton.disabled = true;
+        } else {
+            prevButton.disabled = false;
+        }
+        if (currentPage === this.totalPages) {
+            nextButton.disabled = true;
+        } else {
+            nextButton.disabled = false;
+        }
     }
 };
 
@@ -50,10 +89,12 @@ document.querySelector(".enter-text").addEventListener('keyup', function(event) 
     }
 });
 
-// Add event listener to existing button for pagination
+document.querySelector(".previous-page-button").addEventListener('click', function() {
+    movies.previousPage();
+});
+
 document.querySelector(".next-page-button").addEventListener('click', function() {
     movies.nextPage();
 });
 
-// Initial load
 movies.fetchMovies("Avengers");
